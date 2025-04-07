@@ -17,7 +17,6 @@ mod decoder;
 mod error;
 mod huffman;
 mod requantize;
-mod stereo;
 mod synthesis;
 mod tables;
 mod types;

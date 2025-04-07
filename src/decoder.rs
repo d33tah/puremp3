@@ -1,5 +1,5 @@
 use crate::error::{Error, Mp3Error};
-use crate::tables::{LFS_INTENSITY_STEREO_TABLE, LFS_TABLE, SCALE_FACTOR_SIZES};
+use crate::tables::{LFS_TABLE};
 use crate::types::*;
 use bitstream_io::{BigEndian, BitReader};
 use byteorder::ReadBytesExt;
@@ -264,7 +264,7 @@ fn read_main_data<R: Read>(
     for g in 0..header.num_granules() {
         for c in 0..header.channels.num_channels() {
             let bits_read = if header.version == MpegVersion::Mpeg1 {
-                read_scale_factors(reader, g, c, &side_info, &mut data)?
+                panic!("Mpeg1 not supported");
             } else {
                 read_lfs_scale_factors(
                     reader,
@@ -290,75 +290,6 @@ fn read_main_data<R: Read>(
     Ok(data)
 }
 
-fn read_scale_factors<R: Read>(
-    reader: &mut BitReader<R, BigEndian>,
-    granule: usize,
-    channel: usize,
-    side_info: &SideInfo,
-    main_data: &mut MainData,
-) -> Result<u32, Error> {
-    let mut bits_read = 0;
-
-    let block_type = side_info.granules[granule].channels[channel].block_type;
-    let scalefac_compress =
-        side_info.granules[granule].channels[channel].scalefac_compress as usize;
-    let (scale_len1, scale_len2) = SCALE_FACTOR_SIZES[scalefac_compress];
-
-    if block_type == BlockType::Short || block_type == BlockType::Mixed {
-        let channel_info = &side_info.granules[granule].channels[channel];
-        let channel_data = &mut main_data.granules[granule].channels[channel];
-        if scale_len1 > 0 {
-            if channel_info.block_type == BlockType::Mixed {
-                for sfb in &mut channel_data.scalefac_l[..8] {
-                    *sfb = reader.read(scale_len1 as u32)?;
-                    bits_read += scale_len1;
-                }
-            }
-
-            for sfb in &mut channel_data.scalefac_s[..6] {
-                for window in sfb.iter_mut() {
-                    *window = reader.read(scale_len1 as u32)?;
-                    bits_read += scale_len1;
-                }
-            }
-        }
-
-        if scale_len2 > 0 {
-            for sfb in &mut channel_data.scalefac_s[6..12] {
-                for window in sfb.iter_mut() {
-                    *window = reader.read(scale_len2 as u32)?;
-                    bits_read += scale_len2;
-                }
-            }
-        }
-    } else {
-        // Normal window.
-        let slices = [(0usize, 6usize), (6, 11), (11, 16), (16, 21)];
-        for (i, (start, end)) in slices.iter().enumerate() {
-            let len = if i < 2 { scale_len1 } else { scale_len2 } as u32;
-            if len > 0 {
-                if granule == 0 || !side_info.scfsi[channel][i] {
-                    for sfb in
-                        &mut main_data.granules[granule].channels[channel].scalefac_l[*start..*end]
-                    {
-                        *sfb = reader.read(len)?;
-                        bits_read += len;
-                    }
-                // TODO(Herschel): Is there a cleaner way to do this?
-                // Granule can copy from previous granule. I would like to write this fn without
-                // using array accesses.
-                } else if granule == 1 && side_info.scfsi[channel][i] {
-                    let (granule0, granules) = main_data.granules.split_first_mut().unwrap();
-                    granule0.channels[channel].scalefac_l[*start..*end]
-                        .copy_from_slice(&granules[0].channels[channel].scalefac_l[*start..*end]);
-                }
-            }
-        }
-    }
-
-    Ok(bits_read)
-}
-
 fn read_lfs_scale_factors<R: Read>(
     reader: &mut BitReader<R, BigEndian>,
     intensity_stereo_channel: bool,
@@ -368,7 +299,7 @@ fn read_lfs_scale_factors<R: Read>(
     let mut bits_read = 0;
 
     let lfs_table = if intensity_stereo_channel {
-        &LFS_INTENSITY_STEREO_TABLE
+        panic!("Intensity stereo not supported");
     } else {
         &LFS_TABLE
     };
@@ -486,7 +417,7 @@ fn decode_frame(
     main_data: &mut MainData,
     out_samples: &mut [[f32; 1152]; 2],
 ) -> Result<usize, Error> {
-    use crate::{requantize, stereo, synthesis};
+    use crate::{requantize, synthesis};
 
     if header.channels == Channels::Mono {
         for gr in 0..header.num_granules() {
@@ -511,47 +442,7 @@ fn decode_frame(
 
         out_samples[1] = out_samples[0];
     } else {
-        for gr in 0..header.num_granules() {
-            for ch in 0..MAX_CHANNELS {
-                let side_info = &side_info.granules[gr].channels[ch];
-                let main_data = &mut main_data.granules[gr].channels[ch];
-
-                requantize::requantize(header, side_info, main_data);
-                requantize::reorder(header, side_info, main_data);
-            }
-
-            if let Channels::JointStereo {
-                intensity_stereo,
-                mid_side_stereo,
-            } = header.channels
-            {
-                stereo::stereo(
-                    header,
-                    &side_info.granules[gr],
-                    intensity_stereo,
-                    mid_side_stereo,
-                    &mut main_data.granules[gr],
-                );
-            }
-
-            for (ch, out_channel) in out_samples.iter_mut().enumerate() {
-                let side_info = &side_info.granules[gr].channels[ch];
-                let main_data = &mut main_data.granules[gr].channels[ch];
-
-                synthesis::antialias(side_info, &mut main_data.samples);
-                synthesis::hybrid_synthesis(
-                    side_info.block_type,
-                    &mut decoder.store[ch],
-                    &mut main_data.samples,
-                );
-                synthesis::frequency_inversion(&mut main_data.samples);
-                synthesis::subband_synthesis(
-                    &main_data.samples,
-                    &mut decoder.sbs_v_vec[ch],
-                    &mut out_channel[gr * 576..(gr + 1) * 576],
-                );
-            }
-        }
+        panic!("Stereo not supported");
     }
     Ok(header.num_granules() * 576)
 }

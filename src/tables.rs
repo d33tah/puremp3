@@ -74,31 +74,6 @@ pub const LFS_TABLE: [[[usize; 4]; 3]; 3] = [
     [[6, 9, 9, 9], [6, 9, 12, 6], [15, 18, 0, 0]],
 ];
 
-pub const LFS_INTENSITY_STEREO_TABLE: [[[usize; 4]; 3]; 3] = [
-    [[7, 7, 7, 0], [6, 6, 6, 3], [8, 8, 5, 0]],
-    [[12, 12, 12, 0], [12, 9, 9, 6], [15, 12, 9, 0]],
-    [[6, 15, 12, 0], [6, 12, 9, 6], [6, 18, 9, 0]],
-];
-
-pub const SCALE_FACTOR_SIZES: [(u32, u32); 16] = [
-    (0, 0),
-    (0, 1),
-    (0, 2),
-    (0, 3),
-    (3, 0),
-    (1, 1),
-    (1, 2),
-    (1, 3),
-    (2, 1),
-    (2, 2),
-    (2, 3),
-    (3, 1),
-    (3, 2),
-    (3, 3),
-    (4, 2),
-    (4, 3),
-];
-
 #[derive(Debug)]
 pub struct HuffmanTable {
     pub data: &'static [u16],
@@ -3255,59 +3230,6 @@ pub const SBS_N_WIN: [[f32; 32]; 64] = [
         -0.5956993044924334,
         0.7409511253549532,
     ],
-];
-
-// TODO(Herschel): Replace with const fn when stable.
-// angle = tan( i * 2 * PI / 15 );
-// INTENSITY_STEREO_RATIOS[i][0] = angle / (1.0 + angle)
-// INTENSITY_STEREO_RATIOS[i][1] = 1.0 / (1.0 + angle)
-#[allow(clippy::unreadable_literal)]
-pub const INTENSITY_STEREO_RATIOS: [[f32; 2]; 6] = [
-    [0.0, 1.0],
-    [0.21132487, 0.7886751],
-    [0.36602542, 0.6339746],
-    [0.5, 0.5],
-    [0.6339746, 0.36602542],
-    [0.7886751, 0.21132487],
-];
-
-// TODO(Herschel): Replace with const fn when stable.
-// LFS_INTENSITY_STEREO_RATIOS[i] = 2^(-e/4)
-#[allow(clippy::unreadable_literal)]
-pub const LFS_INTENSITY_STEREO_RATIOS: [f32; 33] = [
-    1.0,
-    0.8408964,
-    0.70710677,
-    0.59460354,
-    0.5,
-    0.4204482,
-    0.35355338,
-    0.29730177,
-    0.25,
-    0.2102241,
-    0.17677669,
-    0.14865088,
-    0.125,
-    0.10511205,
-    0.088388346,
-    0.07432544,
-    0.0625,
-    0.052556027,
-    0.044194173,
-    0.03716272,
-    0.03125,
-    0.026278013,
-    0.022097087,
-    0.01858136,
-    0.015625,
-    0.013139007,
-    0.011048543,
-    0.00929068,
-    0.0078125,
-    0.0065695033,
-    0.0055242716,
-    0.00464534,
-    0.00390625,
 ];
 
 #[allow(clippy::unreadable_literal)]
