@@ -258,7 +258,6 @@ impl DecoderState {
 #[derive(Debug, Default)]
 pub struct SideInfo {
     pub main_data_begin: u16,
-    pub scfsi: [[bool; 4]; 2], // Scale Factor Selection Information
     pub granules: [GranuleSideInfo; 2],
 }
 

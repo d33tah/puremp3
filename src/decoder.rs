@@ -106,20 +106,7 @@ fn read_side_info<R: Read>(mut data: R, header: &FrameHeader) -> Result<SideInfo
     let mut reader = BitReader::endian(&bytes[..], BigEndian);
 
     if header.version == MpegVersion::Mpeg1 {
-        info.main_data_begin = reader.read(9)?;
-
-        // Skip private bits.
-        if header.channels == Channels::Mono {
-            reader.skip(5)?;
-        } else {
-            reader.skip(3)?;
-        }
-
-        for scfsi in &mut info.scfsi[..header.channels.num_channels()] {
-            for band in scfsi.iter_mut() {
-                *band = reader.read_bit()?;
-            }
-        }
+        panic!("Mpeg1 not supported");
     } else {
         info.main_data_begin = reader.read(8)?;
 
@@ -309,35 +296,14 @@ fn read_lfs_scale_factors<R: Read>(
         _ => &lfs_table[0],
     };
 
-    let (scale_lens, lfs_table) = if intensity_stereo_channel {
-        let sfc = u32::from(channel_info.scalefac_compress / 2);
-        match sfc {
-            0..=179 => ([sfc / 36, (sfc % 36) / 6, sfc % 6, 0], &lfs_table[0]),
-            180..=243 => (
-                [
-                    ((sfc - 180) % 64) / 16,
-                    ((sfc - 180) % 16) / 4,
-                    (sfc - 180) % 4,
-                    0,
-                ],
-                &lfs_table[1],
-            ),
-            244..=255 => ([(sfc - 244) / 3, (sfc - 244) % 3, 0, 0], &lfs_table[2]),
-            _ => unreachable!(),
-        }
-    } else {
+    let (scale_lens, lfs_table) = {
         let sfc = u32::from(channel_info.scalefac_compress);
         match sfc {
             0..=399 => (
                 [sfc / 80, (sfc / 16) % 5, (sfc % 16) / 4, sfc & 3],
                 &lfs_table[0],
             ),
-            400..=499 => (
-                [(sfc - 400) / 20, ((sfc - 400) / 4) % 5, (sfc - 400) % 4, 0],
-                &lfs_table[1],
-            ),
-            500..=512 => ([(sfc - 500) / 3, (sfc - 500) % 3, 0, 0], &lfs_table[2]),
-            _ => unreachable!(),
+            _ => panic!("Invalid scalefac_compress"),
         }
     };
 
@@ -362,11 +328,7 @@ fn read_lfs_scale_factors<R: Read>(
     i = 0;
     if channel_info.block_type == BlockType::Short || channel_info.block_type == BlockType::Mixed {
         let short_start = if channel_info.block_type == BlockType::Mixed {
-            for sfb in 0..8 {
-                channel_data.scalefac_l[sfb] = scalefacs[i];
-                i += 1;
-            }
-            3
+            panic!("Mixed block type not supported");
         } else {
             0
         };
