@@ -73,6 +73,7 @@ pub fn read_huffman<R: Read>(
     }
 
     if bits_read < len as usize {
+        eprintln!("skipping {} bits", len - bits_read as u32);
         reader.skip(len - bits_read as u32)?;
     } else if bits_read > len as usize {
         is_pos -= 4;
@@ -97,6 +98,7 @@ fn huffman_decode<R: Read>(
     huffman_table: &HuffmanTable,
     state: &mut HuffmanState,
 ) -> Result<usize, Error> {
+    eprintln!("=> huffman_decode called");
     let mut point = 0;
     let mut bits_left = 32;
     let mut bits_read = 0;
@@ -109,6 +111,7 @@ fn huffman_decode<R: Read>(
             }
 
             bits_read += 1;
+            eprintln!("huffman_decode: reading one bit");
             if reader.read_bit()? {
                 while (huffman_table.data[point] & 0xff) >= 250 {
                     point += (huffman_table.data[point] & 0xff) as usize;
@@ -135,24 +138,28 @@ fn huffman_decode<R: Read>(
 
             if state.v > 0 {
                 bits_read += 1;
+                eprintln!("huffman_decode: reading v bit");
                 if reader.read_bit()? {
                     state.v = -state.v;
                 }
             }
             if state.w > 0 {
                 bits_read += 1;
+                eprintln!("huffman_decode: reading w bit");
                 if reader.read_bit()? {
                     state.w = -state.w;
                 }
             }
             if state.x > 0 {
                 bits_read += 1;
+                eprintln!("huffman_decode: reading x bit");
                 if reader.read_bit()? {
                     state.x = -state.x;
                 }
             }
             if state.y > 0 {
                 bits_read += 1;
+                eprintln!("huffman_decode: reading y bit");
                 if reader.read_bit()? {
                     state.y = -state.y;
                 }
@@ -162,10 +169,12 @@ fn huffman_decode<R: Read>(
                 bits_read += huffman_table.linbits;
                 // TODO(Herschel): u32?
                 state.x += reader.read::<u32>(huffman_table.linbits as u32)? as i32;
+                eprintln!("read 4 bytes for state.x: {}", state.x);
             }
 
             if state.x > 0 {
                 bits_read += 1;
+                eprintln!("huffman_decode: reading x bit");
                 if reader.read_bit()? {
                     state.x = -state.x;
                 }
@@ -174,10 +183,12 @@ fn huffman_decode<R: Read>(
             if huffman_table.linbits > 0 && state.y == 15 {
                 bits_read += huffman_table.linbits;
                 state.y += reader.read::<u32>(huffman_table.linbits as u32)? as i32;
+                eprintln!("read 4 bytes for state.y: {}", state.y);
             }
 
             if state.y > 0 {
                 bits_read += 1;
+                eprintln!("huffman_decode: reading y bit");
                 if reader.read_bit()? {
                     state.y = -state.y;
                 }
