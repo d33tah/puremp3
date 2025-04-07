@@ -7,42 +7,23 @@ use std::io::Read;
 
 pub fn read_frame_header<R: Read>(mut data: R) -> Result<FrameHeader, Error> {
     if data.read_u8()? != 0xff {
-        return Err(Error::Mp3Error(Mp3Error::InvalidData(
-            "Frame sync not found",
-        )));
+        panic!("Invalid frame header1");
     }
 
     let byte = data.read_u8()?;
     if byte & 0b1110_0000 != 0b1110_0000 {
-        return Err(Error::Mp3Error(Mp3Error::InvalidData(
-            "Frame sync not found",
-        )));
+        panic!("Invalid frame header2");
     }
 
     let version = match byte & 0b0001_1000 {
         0b00_000 => MpegVersion::Mpeg2_5,
-        0b01_000 => {
-            return Err(Error::Mp3Error(Mp3Error::InvalidData(
-                "Invalid MPEG version",
-            )))
-        }
-        0b10_000 => MpegVersion::Mpeg2,
-        0b11_000 => MpegVersion::Mpeg1,
-        _ => unreachable!(),
+        _ => panic!("Invalid MPEG version"),
     };
 
     let layer = match byte & 0b110 {
-        0b000 => return Err(Error::Mp3Error(Mp3Error::InvalidData("Invalid MPEG layer"))),
         0b010 => MpegLayer::Layer3,
-        0b100 => MpegLayer::Layer2,
-        0b110 => MpegLayer::Layer1,
-        _ => unreachable!(),
+        _ => panic!("Invalid MPEG layer"),
     };
-    if layer != MpegLayer::Layer3 {
-        return Err(Error::Mp3Error(Mp3Error::Unsupported(
-            "Only MPEG Layer III is supported",
-        )));
-    }
 
     // CRC is ignored for now.
     let crc = byte & 1 == 0;
@@ -52,55 +33,13 @@ pub fn read_frame_header<R: Read>(mut data: R) -> Result<FrameHeader, Error> {
 
     let is_version2 = version == MpegVersion::Mpeg2 || version == MpegVersion::Mpeg2_5;
     let bitrate = match (bytes[0] & 0b1111_0000, is_version2) {
-        (0b0001_0000, false) => BitRate::Kbps32,
-        (0b0010_0000, false) => BitRate::Kbps40,
-        (0b0011_0000, false) => BitRate::Kbps48,
-        (0b0100_0000, false) => BitRate::Kbps56,
-        (0b0101_0000, false) => BitRate::Kbps64,
-        (0b0110_0000, false) => BitRate::Kbps80,
-        (0b0111_0000, false) => BitRate::Kbps96,
-        (0b1000_0000, false) => BitRate::Kbps112,
-        (0b1001_0000, false) => BitRate::Kbps128,
-        (0b1010_0000, false) => BitRate::Kbps160,
-        (0b1011_0000, false) => BitRate::Kbps192,
-        (0b1100_0000, false) => BitRate::Kbps224,
-        (0b1101_0000, false) => BitRate::Kbps256,
-        (0b1110_0000, false) => BitRate::Kbps320,
-
         (0b0001_0000, true) => BitRate::Kbps8,
-        (0b0010_0000, true) => BitRate::Kbps16,
-        (0b0011_0000, true) => BitRate::Kbps24,
-        (0b0100_0000, true) => BitRate::Kbps32,
-        (0b0101_0000, true) => BitRate::Kbps40,
-        (0b0110_0000, true) => BitRate::Kbps48,
-        (0b0111_0000, true) => BitRate::Kbps56,
-        (0b1000_0000, true) => BitRate::Kbps64,
-        (0b1001_0000, true) => BitRate::Kbps80,
-        (0b1010_0000, true) => BitRate::Kbps96,
-        (0b1011_0000, true) => BitRate::Kbps112,
-        (0b1100_0000, true) => BitRate::Kbps128,
-        (0b1101_0000, true) => BitRate::Kbps144,
-        (0b1110_0000, true) => BitRate::Kbps160,
-
-        (0b0000_0000, _) => {
-            return Err(Error::Mp3Error(Mp3Error::Unsupported(
-                "Free bitrate is unsupported",
-            )))
-        }
-        _ => return Err(Error::Mp3Error(Mp3Error::InvalidData("Invalid bitrate"))),
+        _ => panic!("Invalid bitrate"),
     };
 
     let sample_rate = match (bytes[0] & 0b0000_1100, version) {
-        (0b00_00, MpegVersion::Mpeg1) => SampleRate::Hz44100,
-        (0b00_00, MpegVersion::Mpeg2) => SampleRate::Hz22050,
-        (0b00_00, MpegVersion::Mpeg2_5) => SampleRate::Hz11025,
-        (0b01_00, MpegVersion::Mpeg1) => SampleRate::Hz48000,
-        (0b01_00, MpegVersion::Mpeg2) => SampleRate::Hz24000,
-        (0b01_00, MpegVersion::Mpeg2_5) => SampleRate::Hz12000,
-        (0b10_00, MpegVersion::Mpeg1) => SampleRate::Hz32000,
-        (0b10_00, MpegVersion::Mpeg2) => SampleRate::Hz16000,
         (0b10_00, MpegVersion::Mpeg2_5) => SampleRate::Hz8000,
-        _ => return Err(Error::Mp3Error(Mp3Error::InvalidData("Invalid bitrate"))),
+        _ => panic!("Invalid sample rate"),
     };
     let sample_rate_table = ((bytes[0] & 0b0000_1100) >> 2) as usize
         + match version {
@@ -112,24 +51,15 @@ pub fn read_frame_header<R: Read>(mut data: R) -> Result<FrameHeader, Error> {
     let padding = bytes[0] & 0b10 != 0;
 
     let channels = match bytes[1] & 0b11_000000 {
-        0b00_000000 => Channels::Stereo,
-        0b01_000000 => Channels::JointStereo {
-            mid_side_stereo: bytes[1] & 0b0010_0000 != 0,
-            intensity_stereo: bytes[1] & 0b0001_0000 != 0,
-        },
-        0b10_000000 => Channels::DualMono,
         0b11_000000 => Channels::Mono,
-        _ => unreachable!(),
+        _ => panic!("Invalid channel mode"),
     };
 
     let copyright = bytes[1] & 0b1000 != 0;
     let original = bytes[1] & 0b100 != 0;
     let emphasis = match bytes[1] & 0b11 {
         0b00 => Emphasis::None,
-        0b01 => Emphasis::FiftyFifteen,
-        0b10 => return Err(Error::Mp3Error(Mp3Error::InvalidData("Invalid emphasis"))),
-        0b11 => Emphasis::CcitJ17,
-        _ => unreachable!(),
+        _ => panic!("Invalid emphasis"),
     };
 
     if crc {
@@ -139,9 +69,8 @@ pub fn read_frame_header<R: Read>(mut data: R) -> Result<FrameHeader, Error> {
     }
 
     let bits_per_sample = match version {
-        MpegVersion::Mpeg1 => 144,
-        MpegVersion::Mpeg2 => 72,
         MpegVersion::Mpeg2_5 => 72,
+        _ => panic!("Invalid bits per sample"),
     };
     let data_size = (bits_per_sample * bitrate.bps() / sample_rate.hz()
         + if padding { 1 } else { 0 }

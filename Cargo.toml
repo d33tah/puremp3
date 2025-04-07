@@ -17,7 +17,3 @@ bitstream-io = "0.8"
 byteorder = "1.3"
 hound = "3.4"
 
-[dev-dependencies]
-# Used by plackback example
-cpal = "0.10"
-sample = "0.10"

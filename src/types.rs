@@ -289,7 +289,6 @@ pub struct GranuleChannelSideInfo {
     pub global_gain: u8,
     pub scalefac_compress: u16,
     pub block_type: BlockType,
-    pub mixed_block: bool,
     pub subblock_gain: [f32; 3],
 
     pub table_select: [u8; 3],
