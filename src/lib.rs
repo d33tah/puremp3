@@ -15,10 +15,6 @@
 
 mod decoder;
 mod error;
-mod huffman;
-mod requantize;
-mod synthesis;
-mod tables;
 mod types;
 
 pub use crate::error::{Error, Mp3Error};
