@@ -15,6 +15,10 @@
 
 ///! Error types related to MP3 decoding.
 use std::{fmt, io};
+use bitstream_io::{BigEndian, BitReader};
+use byteorder::ReadBytesExt;
+use std::io::Read;
+
 
 /// Error that can be raised during MP3 decoding.
 #[derive(Debug)]
@@ -410,10 +414,6 @@ impl std::fmt::Debug for MainDataChannel {
         write!(f, "MainDataChannel")
     }
 }
-
-use bitstream_io::{BigEndian, BitReader};
-use byteorder::ReadBytesExt;
-use std::io::Read;
 
 // (l, s)
 const SCALE_FACTOR_BAND_INDICES: [([u32; 23], [u32; 14]); 9] = [
