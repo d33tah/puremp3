@@ -320,6 +320,12 @@ pub struct DecoderState {
     pub sbs_v_vec: [[f32; 1024]; 2],
 }
 
+impl Default for DecoderState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DecoderState {
     pub fn new() -> Self {
         DecoderState {
@@ -343,7 +349,9 @@ pub struct GranuleSideInfo {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Default)]
 pub enum BlockType {
+    #[default]
     Long,
     Short,
     Mixed,
@@ -351,11 +359,6 @@ pub enum BlockType {
     End,
 }
 
-impl Default for BlockType {
-    fn default() -> BlockType {
-        BlockType::Long
-    }
-}
 
 #[derive(Debug, Default)]
 pub struct GranuleChannelSideInfo {
@@ -4659,7 +4662,7 @@ fn read_side_info<R: Read>(mut data: R, header: &FrameHeader) -> Result<SideInfo
     }
 
     for granule in &mut info.granules[..header.num_granules()] {
-        *granule = read_granule_side_info(&header, &mut reader)?;
+        *granule = read_granule_side_info(header, &mut reader)?;
     }
 
     Ok(info)
