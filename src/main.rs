@@ -19,6 +19,22 @@ use bitstream_io::{BigEndian, BitReader};
 use byteorder::ReadBytesExt;
 use std::io::Read;
 
+fn read_bit_unwrapped<R: Read>(reader: &mut BitReader<R, BigEndian>) -> bool {
+    let result = reader.read_bit().unwrap();
+    eprintln!("read_bit(): {}", result);
+    result
+}
+
+fn read_bits_unwrapped<R: Read, V: std::fmt::Display + bitstream_io::Numeric>(reader: &mut BitReader<R, BigEndian>, n: u32) -> V {
+    let result = reader.read(n).unwrap();
+    eprintln!("read_bits({}): {}", n, result);
+    result
+}
+
+fn reader_skip_unwrapped<R: Read>(reader: &mut BitReader<R, BigEndian>, n: u32) {
+    reader.skip(n).unwrap();
+    eprintln!("skip_bits({})", n);
+}
 
 /// Error that can be raised during MP3 decoding.
 #[derive(Debug)]
@@ -4651,13 +4667,13 @@ fn read_side_info<R: Read>(mut data: R, header: &FrameHeader) -> Result<SideInfo
     if header.version == MpegVersion::Mpeg1 {
         panic!("Mpeg1 not supported");
     } else {
-        info.main_data_begin = reader.read(8)?;
+        info.main_data_begin = read_bits_unwrapped(&mut reader, 8);
 
         // Skip private bits.
         if header.channels == Channels::Mono {
-            reader.skip(1)?;
+            reader_skip_unwrapped(&mut reader, 1);
         } else {
-            reader.skip(2)?;
+            reader_skip_unwrapped(&mut reader, 2);
         }
     }
 
@@ -4685,25 +4701,25 @@ fn read_granule_channel_side_info<R: Read>(
 ) -> Result<GranuleChannelSideInfo, Error> {
     let mut info: GranuleChannelSideInfo = Default::default();
 
-    info.part2_3_length = reader.read(12)?;
-    info.big_values = reader.read(9)?;
+    info.part2_3_length = read_bits_unwrapped(reader, 12);
+    info.big_values = read_bits_unwrapped(reader, 9);
     if info.big_values > 288 {
         return Err(Error::Mp3Error(Mp3Error::InvalidData("big_values > 288")));
     }
-    info.global_gain = reader.read(8)?;
+    info.global_gain = read_bits_unwrapped(reader, 8);
     let scalefac_compress_len = if header.version == MpegVersion::Mpeg1 {
         4
     } else {
         9
     };
-    info.scalefac_compress = reader.read(scalefac_compress_len)?;
+    info.scalefac_compress = read_bits_unwrapped(reader, scalefac_compress_len);
 
-    let window_switching = reader.read_bit()?;
+    let window_switching = read_bit_unwrapped(reader);
     if window_switching {
         let block_type_id = reader.read::<u8>(2)?;
-        let mixed_block = reader.read_bit()?;
+        let mixed_block = read_bit_unwrapped(reader);
         for region in &mut info.table_select[..2] {
-            *region = reader.read(5)?;
+            *region = read_bits_unwrapped(reader, 5);
         }
 
         let mut subblock_gain = [0f32; 3];
@@ -4744,21 +4760,21 @@ fn read_granule_channel_side_info<R: Read>(
         info.block_type = BlockType::Long;
 
         for region in &mut info.table_select {
-            *region = reader.read(5)?;
+            *region = read_bits_unwrapped(reader, 5);
         }
 
-        info.region0_count = reader.read(4)?;
-        info.region1_count = reader.read(3)?;
+        info.region0_count = read_bits_unwrapped(reader, 4);
+        info.region1_count = read_bits_unwrapped(reader, 3);
     }
 
     info.preflag = if header.version == MpegVersion::Mpeg1 {
-        reader.read_bit()?
+        read_bit_unwrapped(reader)
     } else {
         info.scalefac_compress >= 500
     };
 
-    info.scalefac_scale = reader.read_bit()?; // .5f * (1f + frame.ReadBits(1));
-    info.count1table_select = reader.read_bit()?;
+    info.scalefac_scale = read_bit_unwrapped(reader); // .5f * (1f + frame.ReadBits(1));
+    info.count1table_select = read_bit_unwrapped(reader);
 
     Ok(info)
 }
@@ -4859,7 +4875,7 @@ fn read_lfs_scale_factors<R: Read>(
         assert!(len <= 8);
         if len > 0 {
             for _ in 0..num_blocks {
-                scalefacs[i] = reader.read(len)?;
+                scalefacs[i] = read_bits_unwrapped(reader, len);
                 bits_read += len;
                 i += 1;
             }
@@ -5356,7 +5372,7 @@ pub fn read_huffman<R: Read>(
     }
 
     if bits_read < len as usize {
-        reader.skip(len - bits_read as u32)?;
+        reader_skip_unwrapped(reader, len - bits_read as u32);
     } else if bits_read > len as usize {
         is_pos -= 4;
     }
@@ -5392,7 +5408,7 @@ fn huffman_decode<R: Read>(
             }
 
             bits_read += 1;
-            if reader.read_bit()? {
+            if read_bit_unwrapped(reader) {
                 while (huffman_table.data[point] & 0xff) >= 250 {
                     point += (huffman_table.data[point] & 0xff) as usize;
                 }
@@ -5418,25 +5434,25 @@ fn huffman_decode<R: Read>(
 
             if state.v > 0 {
                 bits_read += 1;
-                if reader.read_bit()? {
+                if read_bit_unwrapped(reader) {
                     state.v = -state.v;
                 }
             }
             if state.w > 0 {
                 bits_read += 1;
-                if reader.read_bit()? {
+                if read_bit_unwrapped(reader) {
                     state.w = -state.w;
                 }
             }
             if state.x > 0 {
                 bits_read += 1;
-                if reader.read_bit()? {
+                if read_bit_unwrapped(reader) {
                     state.x = -state.x;
                 }
             }
             if state.y > 0 {
                 bits_read += 1;
-                if reader.read_bit()? {
+                if read_bit_unwrapped(reader) {
                     state.y = -state.y;
                 }
             }
@@ -5449,7 +5465,7 @@ fn huffman_decode<R: Read>(
 
             if state.x > 0 {
                 bits_read += 1;
-                if reader.read_bit()? {
+                if read_bit_unwrapped(reader) {
                     state.x = -state.x;
                 }
             }
@@ -5461,7 +5477,7 @@ fn huffman_decode<R: Read>(
 
             if state.y > 0 {
                 bits_read += 1;
-                if reader.read_bit()? {
+                if read_bit_unwrapped(reader) {
                     state.y = -state.y;
                 }
             }
